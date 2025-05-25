@@ -1,0 +1,42 @@
+services:
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    restart: unless-stopped
+
+  influxdb-init:
+    image: influxdb:1.8
+    container_name: influxdb-init
+    depends_on:
+      - influxdb
+    volumes:
+      - ./scripts/init-influxdb.sh:/init-influxdb.sh
+    entrypoint: ["/bin/sh", "-c", "sleep 5 && /init-influxdb.sh"]
+    restart: "no"
+
+  medical-ai-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medical-ai-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_USER=admin
+      - INFLUX_PASSWORD=admin
+      - INFLUX_DB=medical_data
+    depends_on:
+      - influxdb
+      - influxdb-init
+    restart: unless-stopped
+
+volumes:
+  influxdb_data:
